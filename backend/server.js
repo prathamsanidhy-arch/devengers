@@ -8,6 +8,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// No database connection
+
 // Middleware
 app.use(cors());
 app.use(helmet({ crossOriginResourcePolicy: false })); // allow images to be served
@@ -25,6 +27,14 @@ app.use('/api/schemes', require('./routes/schemeRoutes'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Smart Bharat API is running' });
+});
+
+// Serve frontend in production
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
