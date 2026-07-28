@@ -5,15 +5,13 @@ import {
   ChevronRight, 
   ChevronLeft, 
   CheckCircle2, 
-  Info,
-  BookmarkPlus,
-  BookmarkCheck,
-  ExternalLink,
-  ShieldCheck,
-  FileText
+  Sparkles,
+  FolderSearch,
+  Search
 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
+import SchemeCard from '../components/SchemeCard';
 
 const SchemeDiscovery = () => {
   const [step, setStep] = useState(1);
@@ -21,17 +19,45 @@ const SchemeDiscovery = () => {
   const [schemes, setSchemes] = useState([]);
   const [savedSchemes, setSavedSchemes] = useState([]);
   
-  const [profile, setProfile] = useState({
-    age: '',
-    gender: 'Male',
-    state: '',
-    occupation: '',
-    annualIncome: '',
-    studentStatus: 'No',
-    farmerStatus: 'No',
-    disabilityStatus: 'No',
-    casteCategory: 'General',
-    employmentStatus: 'Employed',
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem('userProfile');
+    if (saved) return JSON.parse(saved);
+    return {
+      age: '',
+      gender: 'Male',
+      state: '',
+      employmentStatus: 'Employed',
+      annualIncome: '',
+      occupation: '',
+      maritalStatus: 'Single',
+      familyMembers: '',
+      areaType: 'Urban',
+      socialCategory: 'General',
+      documents: {
+        aadhaar: false,
+        pan: false,
+        bankLinked: false,
+        rationCard: false,
+        incomeCertificate: false,
+        casteCertificate: false,
+        disabilityCertificate: false
+      },
+      personalStatus: {
+        student: false,
+        farmer: false,
+        businessOwner: false,
+        seniorCitizen: false,
+        personWithDisability: false,
+        womanEntrepreneur: false,
+        pregnantWoman: false
+      },
+      housingStatus: 'Own House',
+      utilities: {
+        electricity: false,
+        lpg: false,
+        internet: false
+      }
+    };
   });
 
   useEffect(() => {
@@ -57,19 +83,67 @@ const SchemeDiscovery = () => {
     localStorage.setItem('savedSchemes', JSON.stringify(newSaved));
   };
 
-  const handleChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
-  const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
+  const handleChange = (e) => {
+    const newProfile = { ...profile, [e.target.name]: e.target.value };
+    setProfile(newProfile);
+    localStorage.setItem('userProfile', JSON.stringify(newProfile));
+  };
+
+  const handleDocumentToggle = (doc) => {
+    const newProfile = { ...profile, documents: { ...profile.documents, [doc]: !profile.documents[doc] } };
+    setProfile(newProfile);
+    localStorage.setItem('userProfile', JSON.stringify(newProfile));
+  };
+
+  const handleStatusToggle = (status) => {
+    const newProfile = { ...profile, personalStatus: { ...profile.personalStatus, [status]: !profile.personalStatus[status] } };
+    setProfile(newProfile);
+    localStorage.setItem('userProfile', JSON.stringify(newProfile));
+  };
+
+  const handleUtilityToggle = (util) => {
+    const newProfile = { ...profile, utilities: { ...profile.utilities, [util]: !profile.utilities[util] } };
+    setProfile(newProfile);
+    localStorage.setItem('userProfile', JSON.stringify(newProfile));
+  };
+
+  const validateStep = () => {
+    if (step === 1) {
+      if (!profile.age || !profile.state) {
+        toast.error('Please fill out all required fields');
+        return false;
+      }
+    }
+    if (step === 2) {
+      if (!profile.annualIncome) {
+        toast.error('Please provide your annual income');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep()) {
+      setStep(prev => Math.min(prev + 1, 4));
+    }
+  };
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
   const handleSubmit = async () => {
+    if (!validateStep()) return;
+    
+    localStorage.setItem('userProfile', JSON.stringify(profile));
     setLoading(true);
+    setStep(4);
+    
     try {
       const response = await api.post('/schemes/discover', profile);
       setSchemes(response.data.data);
-      setStep(4);
       toast.success('Schemes discovered successfully!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to analyze profile.');
+      setStep(3);
     } finally {
       setLoading(false);
     }
@@ -131,18 +205,18 @@ const SchemeDiscovery = () => {
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Basic Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Age</label>
-                  <input type="number" name="age" value={profile.age} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., 35" />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Age <span className="text-red-500">*</span></label>
+                  <input type="number" name="age" value={profile.age} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., 35" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Gender</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Gender <span className="text-red-500">*</span></label>
                   <select name="gender" value={profile.gender} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
                     <option>Male</option><option>Female</option><option>Other</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">State of Residence</label>
-                  <input type="text" name="state" value={profile.state} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., Maharashtra" />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">State of Residence <span className="text-red-500">*</span></label>
+                  <input type="text" name="state" value={profile.state} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., Maharashtra" required />
                 </div>
               </div>
             </motion.div>
@@ -160,8 +234,8 @@ const SchemeDiscovery = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Annual Income (₹)</label>
-                  <input type="number" name="annualIncome" value={profile.annualIncome} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., 250000" />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Annual Income (₹) <span className="text-red-500">*</span></label>
+                  <input type="number" name="annualIncome" value={profile.annualIncome} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g., 250000" required />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-2">Occupation (Optional)</label>
@@ -174,31 +248,88 @@ const SchemeDiscovery = () => {
           {/* Step 3 */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-8">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Special Categories</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Additional Status</h2>
+              
+              <div className="space-y-8">
+                {/* Family Information */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Are you a Student?</label>
-                  <select name="studentStatus" value={profile.studentStatus} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
-                    <option>No</option><option>Yes</option>
-                  </select>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Family Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Marital Status</label>
+                      <select name="maritalStatus" value={profile.maritalStatus} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
+                        <option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Number of Family Members</label>
+                      <input type="number" name="familyMembers" value={profile.familyMembers} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none" placeholder="e.g. 4" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Area Type</label>
+                      <select name="areaType" value={profile.areaType} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
+                        <option>Urban</option><option>Rural</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Social Category</label>
+                      <select name="socialCategory" value={profile.socialCategory} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
+                        <option>General</option><option>OBC</option><option>SC</option><option>ST</option><option>EWS</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Document Checkboxes */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Are you a Farmer?</label>
-                  <select name="farmerStatus" value={profile.farmerStatus} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
-                    <option>No</option><option>Yes</option>
-                  </select>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Government Documents</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.keys(profile.documents).map((doc) => (
+                      <label key={doc} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                        <input type="checkbox" checked={profile.documents[doc]} onChange={() => handleDocumentToggle(doc)} className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
+                        <span className="text-sm font-medium text-slate-700 capitalize">{doc.replace(/([A-Z])/g, ' $1')}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Personal Status */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Caste Category</label>
-                  <select name="casteCategory" value={profile.casteCategory} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
-                    <option>General</option><option>OBC</option><option>SC</option><option>ST</option><option>Minority</option>
-                  </select>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Personal Status</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.keys(profile.personalStatus).map((status) => (
+                      <label key={status} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                        <input type="checkbox" checked={profile.personalStatus[status]} onChange={() => handleStatusToggle(status)} className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
+                        <span className="text-sm font-medium text-slate-700 capitalize">{status.replace(/([A-Z])/g, ' $1')}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Person with Disability</label>
-                  <select name="disabilityStatus" value={profile.disabilityStatus} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none bg-white">
-                    <option>No</option><option>Yes</option>
-                  </select>
+
+                {/* Housing & Utilities */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Housing</h3>
+                    <div className="space-y-3">
+                      {['Own House', 'Rental', 'Homeless'].map((type) => (
+                        <label key={type} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                          <input type="radio" name="housingStatus" value={type} checked={profile.housingStatus === type} onChange={handleChange} className="w-5 h-5 text-brand-600 border-slate-300 focus:ring-brand-500" />
+                          <span className="text-sm font-medium text-slate-700">{type}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Utility Access</h3>
+                    <div className="space-y-3">
+                      {Object.keys(profile.utilities).map((util) => (
+                        <label key={util} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                          <input type="checkbox" checked={profile.utilities[util]} onChange={() => handleUtilityToggle(util)} className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
+                          <span className="text-sm font-medium text-slate-700 capitalize">{util}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -207,92 +338,55 @@ const SchemeDiscovery = () => {
           {/* Step 4: Results */}
           {step === 4 && (
             <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 bg-slate-50">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Your AI Matches</h2>
-                  <p className="text-sm text-slate-500">Based on your profile, you are eligible for these schemes.</p>
+                  <h2 className="text-3xl font-bold text-slate-900">Recommended Schemes</h2>
+                  <p className="text-sm text-slate-500 mt-1">Based on your profile, we've found these tailored opportunities.</p>
                 </div>
-                <button onClick={() => setStep(1)} className="text-brand-600 font-medium hover:text-brand-700 text-sm">
-                  Edit Profile
+                <button onClick={() => setStep(1)} className="text-brand-600 font-medium hover:text-brand-700 text-sm bg-brand-50 px-5 py-2.5 rounded-xl transition-colors border border-brand-100 flex items-center gap-2">
+                  <Search className="w-4 h-4" /> Edit Profile
                 </button>
               </div>
 
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
-                  <p className="mt-4 text-brand-600 font-medium animate-pulse">Analyzing massive government databases...</p>
+                <div className="space-y-6">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm animate-pulse">
+                      <div className="flex gap-4">
+                        <div className="w-12 h-12 bg-slate-200 rounded-xl"></div>
+                        <div className="flex-1 space-y-3">
+                          <div className="h-6 bg-slate-200 rounded w-1/3"></div>
+                          <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                        </div>
+                      </div>
+                      <div className="mt-6 space-y-3">
+                        <div className="h-4 bg-slate-200 rounded w-full"></div>
+                        <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-center mt-6">
+                    <p className="text-brand-600 font-medium animate-pulse flex items-center justify-center gap-2">
+                      <Sparkles className="w-5 h-5" /> Analyzing massive government databases with AI...
+                    </p>
+                  </div>
+                </div>
+              ) : schemes.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
+                  <FolderSearch className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-700">No matching schemes found</h3>
+                  <p className="text-slate-500 mt-2">Try adjusting your profile to see more results.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {schemes.map((scheme, idx) => {
-                    const isSaved = savedSchemes.some(s => s.schemeName === scheme.schemeName);
-                    return (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                      key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      <div className="p-6">
-                        <div className="flex justify-between items-start gap-4">
-                          <h3 className="text-xl font-bold text-slate-900">{scheme.schemeName}</h3>
-                          <button 
-                            onClick={() => toggleSaveScheme(scheme)}
-                            className={`p-2 rounded-lg transition-colors ${isSaved ? 'bg-brand-50 text-brand-600' : 'text-slate-400 hover:bg-slate-50'}`}
-                          >
-                            {isSaved ? <BookmarkCheck className="w-6 h-6" /> : <BookmarkPlus className="w-6 h-6" />}
-                          </button>
-                        </div>
-
-                        <div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3">
-                          <ShieldCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
-                          <div>
-                            <h4 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-1">Why you qualify</h4>
-                            <p className="text-sm text-emerald-800">{scheme.whyEligible}</p>
-                          </div>
-                        </div>
-
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-brand-500" /> Key Benefits
-                            </h4>
-                            <ul className="space-y-2">
-                              {scheme.benefits.map((b, i) => (
-                                <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 flex-shrink-0"></div>
-                                  {b}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-brand-500" /> Required Documents
-                            </h4>
-                            <ul className="space-y-2">
-                              {scheme.requiredDocuments.map((d, i) => (
-                                <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 flex-shrink-0"></div>
-                                  {d}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-
-                        <div className="mt-6 pt-6 border-t border-slate-100">
-                          <h4 className="text-sm font-bold text-slate-900 mb-2">How to Apply</h4>
-                          <p className="text-sm text-slate-600">{scheme.howToApply}</p>
-                        </div>
-
-                        {scheme.importantNotes && (
-                          <div className="mt-4 bg-amber-50 rounded-lg p-3 text-sm text-amber-800 flex items-start gap-2">
-                            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            {scheme.importantNotes}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )})}
+                  {schemes.map((scheme, idx) => (
+                    <SchemeCard 
+                      key={idx} 
+                      scheme={scheme} 
+                      isSaved={savedSchemes.some(s => s.schemeName === scheme.schemeName)} 
+                      toggleSave={toggleSaveScheme} 
+                    />
+                  ))}
                 </div>
               )}
             </motion.div>
@@ -302,7 +396,7 @@ const SchemeDiscovery = () => {
 
         {/* Footer Navigation */}
         {step < 4 && (
-          <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+          <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
             <button 
               onClick={prevStep}
               disabled={step === 1}
@@ -314,10 +408,9 @@ const SchemeDiscovery = () => {
             {step < 3 ? (
               <button 
                 onClick={nextStep}
-                disabled={!profile.age || !profile.state}
-                className="bg-brand-600 text-white px-6 py-2 rounded-xl font-medium shadow-sm hover:bg-brand-500 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                className="bg-brand-600 text-white px-6 py-2.5 rounded-xl font-medium shadow-sm hover:bg-brand-500 flex items-center gap-2 transition-colors"
               >
-                Next <ChevronRight className="w-4 h-4" />
+                Continue <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button 

@@ -79,7 +79,7 @@ const Dashboard = () => {
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-              Welcome back, {user?.name.split(' ')[0]}
+              Welcome back, {user?.name ? user.name.split(' ')[0] : 'Citizen'}
             </h1>
             <p className="text-slate-300 text-lg max-w-xl">
               Your civic dashboard is updated. You have <span className="text-brand-400 font-semibold">{stats.pending} pending</span> requests requiring attention.
