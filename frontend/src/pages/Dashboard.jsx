@@ -23,13 +23,24 @@ const Dashboard = () => {
     resolved: 0
   });
   const [recentComplaints, setRecentComplaints] = useState([]);
+  
+  // DigiVault Stats
+  const [vaultDocs, setVaultDocs] = useState([]);
+  const [storageUsage, setStorageUsage] = useState(0);
+  const [expiringDocs, setExpiringDocs] = useState(0);
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const { data } = await api.get('/complaints');
-        const complaints = data.data;
+        const token = localStorage.getItem('token');
+        const [complaintRes, vaultRes] = await Promise.all([
+          api.get('/complaints'),
+          fetch('/api/documents', { headers: { 'Authorization': `Bearer ${token}` } }).then(res => res.json())
+        ]);
+        
+        const complaints = complaintRes.data.data;
         
         setStats({
           total: complaints.length,
@@ -38,6 +49,23 @@ const Dashboard = () => {
         });
         
         setRecentComplaints(complaints.slice(0, 3));
+
+        if (vaultRes.success) {
+          const docs = vaultRes.data;
+          setVaultDocs(docs.slice(0, 3)); // Recent 3
+          
+          let size = 0;
+          let expiring = 0;
+          docs.forEach(d => {
+            size += parseFloat(d.size.split(' ')[0] || 0);
+            if (d.aiSummary?.expiryDate) {
+              const diffDays = Math.ceil((new Date(d.aiSummary.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+              if (diffDays >= 0 && diffDays <= 30) expiring++;
+            }
+          });
+          setStorageUsage(size.toFixed(1));
+          setExpiringDocs(expiring);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data', error);
       } finally {
@@ -156,7 +184,7 @@ const Dashboard = () => {
             <div className="space-y-4">
               {recentComplaints.map((complaint) => (
                 <Link key={complaint._id} to={`/complaints/${complaint._id}`} className="block group">
-                  <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-md transition-all">
                     <div className="flex items-center gap-4">
                       <div className={`w-2 h-12 rounded-full ${complaint.status === 'Resolved' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
                       <div>
@@ -193,13 +221,29 @@ const Dashboard = () => {
 
           <div className="space-y-6">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover-lift">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
-                <Landmark className="w-5 h-5" />
+              <div className="flex justify-between items-start mb-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                  <Landmark className="w-5 h-5" />
+                </div>
+                {expiringDocs > 0 && (
+                  <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold animate-pulse">{expiringDocs} Expiring Soon</span>
+                )}
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1">Discover Govt Schemes</h3>
-              <p className="text-sm text-slate-600 mb-4">Our AI has identified 5 new welfare schemes you might be eligible for.</p>
-              <Link to="/schemes" className="text-sm font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1">
-                Check Eligibility <ArrowRight className="w-4 h-4" />
+              <h3 className="font-semibold text-slate-900 mb-1">DigiVault Status</h3>
+              <p className="text-sm text-slate-600 mb-3">You are using {storageUsage} MB of your secure storage. Ensure your critical documents are up to date.</p>
+              
+              <div className="space-y-2 mb-4">
+                {vaultDocs.map((doc, idx) => (
+                   <div key={idx} className="text-xs flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-100">
+                     <FileText className="w-3 h-3 text-slate-400" />
+                     <span className="truncate flex-1 font-medium text-slate-700">{doc.originalName}</span>
+                     <span className="text-slate-400">{new Date(doc.uploadDate).toLocaleDateString()}</span>
+                   </div>
+                ))}
+              </div>
+
+              <Link to="/vault" className="text-sm font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1">
+                Open DigiVault <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
@@ -207,8 +251,11 @@ const Dashboard = () => {
               <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
                 <TrendingUp className="w-5 h-5" />
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1">Community Trends</h3>
-              <p className="text-sm text-slate-600">Water & Sanitation issues are currently trending in your locality.</p>
+              <h3 className="font-semibold text-slate-900 mb-1">Discover Govt Schemes</h3>
+              <p className="text-sm text-slate-600 mb-4">Our AI has identified 5 new welfare schemes you might be eligible for based on your vault documents.</p>
+              <Link to="/schemes" className="text-sm font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                Check Eligibility <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </motion.div>

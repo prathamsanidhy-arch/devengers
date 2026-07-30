@@ -136,7 +136,7 @@ const Layout = ({ children }) => {
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex items-center lg:hidden">
+          <div className="flex items-center space-x-2 lg:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-slate-500 hover:text-slate-600 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"

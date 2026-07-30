@@ -79,7 +79,7 @@ const SchemeCard = ({ scheme, isSaved, toggleSave }) => {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-t border-slate-100"
           >
-            <div className="p-6 bg-slate-50/50">
+            <div className="p-6 bg-slate-50">
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3 mb-6">
                 <ShieldCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
                 <div>

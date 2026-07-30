@@ -72,7 +72,7 @@ const ComplaintDetails = () => {
 
       <div id="report-content" className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
         {/* Header Section */}
-        <div className="relative p-8 sm:p-10 border-b border-slate-100 bg-slate-50/50">
+        <div className="relative p-8 sm:p-10 border-b border-slate-100 bg-slate-50">
           <div className="flex flex-col md:flex-row gap-8 justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">

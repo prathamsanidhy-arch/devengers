@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, Sparkles, CheckCircle2, AlertCircle, ArrowRight, ShieldAlert, Building2, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../api/axios';
+import { compressImage } from '../utils/imageUtils';
 
 const SubmitComplaint = () => {
   const [formData, setFormData] = useState({
@@ -20,18 +21,66 @@ const SubmitComplaint = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [vaultDocs, setVaultDocs] = useState([]);
+  const [showVaultModal, setShowVaultModal] = useState(false);
+  const [attachedVaultDoc, setAttachedVaultDoc] = useState(null);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('/api/documents', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setVaultDocs(data.data.filter(d => d.mimeType.startsWith('image/')));
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.type.startsWith('image/')) {
+        try {
+          const compressed = await compressImage(file);
+          setImage(compressed);
+          setImagePreview(URL.createObjectURL(compressed));
+        } catch (err) {
+          setImage(file);
+          setImagePreview(URL.createObjectURL(file));
+        }
+      } else {
+        setImage(file);
+        setImagePreview(URL.createObjectURL(file));
+      }
+      setAttachedVaultDoc(null);
+      setAiData({ department: '', confidenceScore: null });
+    }
+  };
+
+  const selectVaultDoc = async (doc) => {
+    setAttachedVaultDoc(doc);
+    setShowVaultModal(false);
+    
+    // We fetch the blob for preview and AI
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`/api/documents/${doc._id}/view`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to load vault document');
+      const blob = await response.blob();
+      const file = new File([blob], doc.originalName, { type: doc.mimeType });
       setImage(file);
       setImagePreview(URL.createObjectURL(file));
       setAiData({ department: '', confidenceScore: null });
+    } catch(err) {
+      toast.error('Failed to attach document from vault');
     }
   };
 
@@ -141,6 +190,17 @@ const SubmitComplaint = () => {
                 )}
                 <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
               </label>
+              
+              <div className="mt-4 text-center">
+                <p className="text-sm text-slate-500 mb-2">OR</p>
+                <button 
+                  type="button" 
+                  onClick={() => setShowVaultModal(true)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 rounded-xl transition-colors text-sm flex items-center gap-2 mx-auto"
+                >
+                  <MapPin className="w-4 h-4" /> Attach from DigiVault
+                </button>
+              </div>
             </div>
 
             <div className="sm:w-64 flex flex-col justify-center">
@@ -155,7 +215,7 @@ const SubmitComplaint = () => {
                   className="w-full bg-purple-600 text-white py-2.5 px-4 rounded-xl font-medium shadow-md hover:bg-purple-700 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
                 >
                   {isAnalyzing ? (
-                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Analyzing...</>
+                    <><div className="w-4 h-4 border-2 border-white border-t-white rounded-full animate-spin"></div> Analyzing...</>
                   ) : (
                     <>Analyze Image <ArrowRight className="w-4 h-4" /></>
                   )}
@@ -284,6 +344,40 @@ const SubmitComplaint = () => {
           </motion.div>
         </AnimatePresence>
       </form>
+
+      {/* Vault Modal */}
+      <AnimatePresence>
+        {showVaultModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-slate-900">Select Image from Vault</h3>
+                <button onClick={() => setShowVaultModal(false)} className="text-slate-400 hover:text-slate-600">×</button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {vaultDocs.length === 0 ? (
+                  <p className="text-center text-slate-500 py-8">No images found in your DigiVault.</p>
+                ) : (
+                  vaultDocs.map(doc => (
+                    <button 
+                      key={doc._id} 
+                      type="button"
+                      onClick={() => selectVaultDoc(doc)}
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-brand-300 hover:bg-brand-50 transition-colors text-left"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900">{doc.originalName}</span>
+                        <span className="text-xs text-slate-500">{doc.aiSummary?.documentType || doc.category}</span>
+                      </div>
+                      <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500">{new Date(doc.uploadDate).toLocaleDateString()}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

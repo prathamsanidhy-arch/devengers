@@ -60,10 +60,49 @@ const SchemeDiscovery = () => {
     };
   });
 
+  const [vaultDocs, setVaultDocs] = useState([]);
+
   useEffect(() => {
     const saved = localStorage.getItem('savedSchemes');
     if (saved) {
       setSavedSchemes(JSON.parse(saved));
+    }
+
+    // Fetch DigiVault documents
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('/api/documents', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setVaultDocs(data.data);
+            
+            // Auto-check profile documents based on Vault
+            setProfile(prev => {
+              const newDocs = { ...prev.documents };
+              let updated = false;
+              
+              Object.keys(newDocs).forEach(docKey => {
+                const isFound = data.data.some(vd => 
+                  vd.aiSummary?.documentType?.toLowerCase().includes(docKey.toLowerCase()) || 
+                  vd.originalName.toLowerCase().includes(docKey.toLowerCase())
+                );
+                if (isFound && !newDocs[docKey]) {
+                  newDocs[docKey] = true;
+                  updated = true;
+                }
+              });
+              
+              if (updated) {
+                const newProfile = { ...prev, documents: newDocs };
+                localStorage.setItem('userProfile', JSON.stringify(newProfile));
+                return newProfile;
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(console.error);
     }
   }, []);
 
@@ -284,12 +323,26 @@ const SchemeDiscovery = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Government Documents</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {Object.keys(profile.documents).map((doc) => (
-                      <label key={doc} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-                        <input type="checkbox" checked={profile.documents[doc]} onChange={() => handleDocumentToggle(doc)} className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500" />
-                        <span className="text-sm font-medium text-slate-700 capitalize">{doc.replace(/([A-Z])/g, ' $1')}</span>
-                      </label>
-                    ))}
+                    {Object.keys(profile.documents).map((doc) => {
+                      const isFoundInVault = vaultDocs.some(vd => 
+                        vd.aiSummary?.documentType?.toLowerCase().includes(doc.toLowerCase()) || 
+                        vd.originalName.toLowerCase().includes(doc.toLowerCase())
+                      );
+                      
+                      return (
+                        <div key={doc} className={`flex flex-col gap-2 p-3 rounded-xl border ${isFoundInVault ? 'border-brand-200 bg-brand-50/30' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                          <label className={`flex items-center gap-3 cursor-pointer ${isFoundInVault ? 'opacity-80' : ''}`}>
+                            <input type="checkbox" checked={profile.documents[doc]} onChange={() => !isFoundInVault && handleDocumentToggle(doc)} disabled={isFoundInVault} className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500 disabled:bg-brand-200" />
+                            <span className="text-sm font-medium text-slate-700 capitalize">{doc.replace(/([A-Z])/g, ' $1')}</span>
+                          </label>
+                          {isFoundInVault && (
+                            <span className="text-[10px] font-bold text-brand-600 uppercase tracking-wider flex items-center gap-1 mt-1">
+                              <CheckCircle2 className="w-3 h-3" /> Vault Verified
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

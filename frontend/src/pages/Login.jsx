@@ -129,7 +129,7 @@ const Login = () => {
               className="w-full bg-gradient-brand text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
             >
               {loading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-6 h-6 border-2 border-white border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>Sign in <ArrowRight className="w-5 h-5" /></>
               )}

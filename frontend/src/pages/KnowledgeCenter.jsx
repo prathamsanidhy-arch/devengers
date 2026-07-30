@@ -37,7 +37,7 @@ const KnowledgeCenter = () => {
           
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input type="text" placeholder="Search guides, tutorials, or rights..." className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-400 focus:bg-white/20 outline-none transition-all" />
+            <input type="text" placeholder="Search guides, tutorials, or rights..." className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/10 backdrop-blur-md border border-white text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-400 focus:bg-white/20 outline-none transition-all" />
           </div>
         </div>
       </div>
