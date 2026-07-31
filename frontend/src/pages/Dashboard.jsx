@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { 
   FileText, 
@@ -17,6 +18,7 @@ import api from '../api/axios';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -90,7 +92,7 @@ const Dashboard = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
-        <p className="mt-4 text-slate-500 animate-pulse">Loading your dashboard...</p>
+        <p className="mt-4 text-slate-500 animate-pulse">{t('dashboard.loading')}</p>
       </div>
     );
   }
@@ -107,15 +109,15 @@ const Dashboard = () => {
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-              Welcome back, {user?.name ? user.name.split(' ')[0] : 'Citizen'}
+              {t('dashboard.welcomeBack')}, {user?.name ? user.name.split(' ')[0] : t('dashboard.citizen')}
             </h1>
             <p className="text-slate-300 text-lg max-w-xl">
-              Your civic dashboard is updated. You have <span className="text-brand-400 font-semibold">{stats.pending} pending</span> requests requiring attention.
+              {t('dashboard.dashboardUpdated')} <span className="text-brand-400 font-semibold">{stats.pending} {t('dashboard.pending')}</span> {t('dashboard.pendingRequests')}
             </p>
           </div>
           <div className="flex gap-4">
             <Link to="/submit" className="bg-brand-500 hover:bg-brand-400 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-brand-500/30 flex items-center gap-2">
-              <FileText className="w-5 h-5" /> Report Issue
+              <FileText className="w-5 h-5" /> {t('dashboard.reportIssue')}
             </Link>
           </div>
         </div>
@@ -133,7 +135,7 @@ const Dashboard = () => {
             <Activity className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Total Reports</p>
+            <p className="text-sm font-medium text-slate-500">{t('dashboard.totalReports')}</p>
             <h3 className="text-3xl font-bold text-slate-900">{stats.total}</h3>
           </div>
         </motion.div>
@@ -143,7 +145,7 @@ const Dashboard = () => {
             <Clock className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Pending Action</p>
+            <p className="text-sm font-medium text-slate-500">{t('dashboard.pendingAction')}</p>
             <h3 className="text-3xl font-bold text-slate-900">{stats.pending}</h3>
           </div>
         </motion.div>
@@ -153,7 +155,7 @@ const Dashboard = () => {
             <CheckCircle className="w-7 h-7" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-500">Resolved</p>
+            <p className="text-sm font-medium text-slate-500">{t('dashboard.resolved')}</p>
             <h3 className="text-3xl font-bold text-slate-900">{stats.resolved}</h3>
           </div>
         </motion.div>
@@ -168,17 +170,17 @@ const Dashboard = () => {
           className="lg:col-span-2 glass-card p-6 sm:p-8"
         >
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Recent Complaints</h2>
+            <h2 className="text-xl font-bold text-slate-900">{t('dashboard.recentComplaints')}</h2>
             <Link to="/history" className="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1">
-              View all <ArrowRight className="w-4 h-4" />
+              {t('dashboard.viewAll')} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
           {recentComplaints.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
               <FileText className="mx-auto h-12 w-12 text-slate-300" />
-              <h3 className="mt-2 text-sm font-semibold text-slate-900">No complaints</h3>
-              <p className="mt-1 text-sm text-slate-500">You haven't reported any issues yet.</p>
+              <h3 className="mt-2 text-sm font-semibold text-slate-900">{t('dashboard.noComplaints')}</h3>
+              <p className="mt-1 text-sm text-slate-500">{t('dashboard.noComplaintsDesc')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -216,7 +218,7 @@ const Dashboard = () => {
         >
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-6 h-6 text-brand-500" />
-            <h2 className="text-xl font-bold text-slate-900">Smart Insights</h2>
+            <h2 className="text-xl font-bold text-slate-900">{t('dashboard.smartInsights')}</h2>
           </div>
 
           <div className="space-y-6">
@@ -226,11 +228,11 @@ const Dashboard = () => {
                   <Landmark className="w-5 h-5" />
                 </div>
                 {expiringDocs > 0 && (
-                  <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold animate-pulse">{expiringDocs} Expiring Soon</span>
+                  <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold animate-pulse">{expiringDocs} {t('dashboard.expiringSoon')}</span>
                 )}
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1">DigiVault Status</h3>
-              <p className="text-sm text-slate-600 mb-3">You are using {storageUsage} MB of your secure storage. Ensure your critical documents are up to date.</p>
+              <h3 className="font-semibold text-slate-900 mb-1">{t('dashboard.digiVaultStatus')}</h3>
+              <p className="text-sm text-slate-600 mb-3">{t('dashboard.storageUsage', { usage: storageUsage })}</p>
               
               <div className="space-y-2 mb-4">
                 {vaultDocs.map((doc, idx) => (
@@ -243,7 +245,7 @@ const Dashboard = () => {
               </div>
 
               <Link to="/vault" className="text-sm font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1">
-                Open DigiVault <ArrowRight className="w-4 h-4" />
+                {t('dashboard.openDigiVault')} <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
@@ -251,10 +253,10 @@ const Dashboard = () => {
               <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
                 <TrendingUp className="w-5 h-5" />
               </div>
-              <h3 className="font-semibold text-slate-900 mb-1">Discover Govt Schemes</h3>
-              <p className="text-sm text-slate-600 mb-4">Our AI has identified 5 new welfare schemes you might be eligible for based on your vault documents.</p>
+              <h3 className="font-semibold text-slate-900 mb-1">{t('dashboard.discoverGovtSchemes')}</h3>
+              <p className="text-sm text-slate-600 mb-4">{t('dashboard.aiSchemesDesc')}</p>
               <Link to="/schemes" className="text-sm font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1">
-                Check Eligibility <ArrowRight className="w-4 h-4" />
+                {t('dashboard.checkEligibility')} <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>

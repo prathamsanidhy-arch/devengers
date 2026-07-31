@@ -1,17 +1,17 @@
+import { useTranslation } from "react-i18next";
 import React from 'react';
-
-const Timeline = ({ events }) => {
-  if (!events || events.length === 0) return <p className="text-gray-500">No updates yet.</p>;
-
-  return (
-    <div className="flow-root">
+const Timeline = ({
+  events
+}) => {
+  const {
+    t
+  } = useTranslation();
+  if (!events || events.length === 0) return <p className="text-gray-500">{t("Timeline.no_updates_yet")}</p>;
+  return <div className="flow-root">
       <ul role="list" className="-mb-8">
-        {events.map((event, eventIdx) => (
-          <li key={eventIdx}>
+        {events.map((event, eventIdx) => <li key={eventIdx}>
             <div className="relative pb-8">
-              {eventIdx !== events.length - 1 ? (
-                <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-              ) : null}
+              {eventIdx !== events.length - 1 ? <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" /> : null}
               <div className="relative flex space-x-3">
                 <div>
                   <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
@@ -31,11 +31,8 @@ const Timeline = ({ events }) => {
                 </div>
               </div>
             </div>
-          </li>
-        ))}
+          </li>)}
       </ul>
-    </div>
-  );
+    </div>;
 };
-
 export default Timeline;

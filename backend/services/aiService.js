@@ -1,11 +1,18 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+const getModelName = () => {
+  if (!process.env.GEMINI_MODEL) {
+    throw new Error('GEMINI_MODEL is not set in environment variables');
+  }
+  return process.env.GEMINI_MODEL;
+};
+
 const analyzeComplaintImage = async (base64Image, mimeType) => {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('Invalid API Key');
   }
 
-  const modelName = "gemini-3.5-flash";
+  const modelName = getModelName();
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: modelName });
 
@@ -352,7 +359,7 @@ const discoverSchemes = async (profileData) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
+      model: getModelName(),
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -398,7 +405,7 @@ const explainService = async (serviceName) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
+      model: getModelName(),
       generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -466,7 +473,7 @@ const analyzeVaultDocument = async (filePath, mimeType, originalName) => {
     const fs = require('fs');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
+      model: getModelName(),
       generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -530,7 +537,7 @@ Available paths:
 Keep responses concise and helpful. Use markdown for formatting.`;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
+      model: getModelName(),
       systemInstruction
     });
 

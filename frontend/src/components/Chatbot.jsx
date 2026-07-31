@@ -2,13 +2,21 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Sparkles, ChevronDown, Mic, MicOff, Volume2, VolumeX, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 
 const Chatbot = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { id: 1, type: 'bot', text: 'Namaste! I am your AI Citizen Assistant. How can I help you today?', isMarkdown: false }
-  ]);
+  const [messages, setMessages] = useState([]);
+  
+  // Initialize default message with translation on mount or language change
+  useEffect(() => {
+    if (messages.length === 0 || messages[0].text === 'Namaste! I am your AI Citizen Assistant. How can I help you today?' || messages[0].text === 'नमस्ते! मैं आपका एआई नागरिक सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?') {
+      setMessages([{ id: 1, type: 'bot', text: t('chatbot.greeting'), isMarkdown: false }]);
+    }
+  }, [t]);
+
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -52,7 +60,7 @@ const Chatbot = () => {
         setIsListening(false);
         // Handle permission denial
         if (event.error === 'not-allowed') {
-          alert("Microphone access denied. Please allow microphone permissions in your browser.");
+          alert(t('chatbot.micDenied'));
         }
       };
 
@@ -69,7 +77,7 @@ const Chatbot = () => {
       recognitionRef.current?.stop();
     } else {
       if (!recognitionRef.current) {
-        alert("Speech recognition is not supported in this browser.");
+        alert(t('chatbot.speechUnsupported'));
         return;
       }
       try {
@@ -149,7 +157,7 @@ const Chatbot = () => {
         setMessages(prev => [...prev, { 
           id: Date.now() + 1, 
           type: 'bot', 
-          text: response.data.message || 'Sorry, I encountered an error. Please try again.', 
+          text: response.data.message || t('chatbot.errorMsg'), 
           isMarkdown: false 
         }]);
       }
@@ -157,7 +165,7 @@ const Chatbot = () => {
       console.error('Chat error:', error);
       setIsTyping(false);
       
-      const errorMessage = error.response?.data?.message || 'Sorry, I encountered an error connecting to the server. Please try again.';
+      const errorMessage = error.response?.data?.message || t('chatbot.serverErrorMsg');
       
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
@@ -230,17 +238,17 @@ const Chatbot = () => {
                 </div>
                 <div>
                   <h3 className="font-bold flex items-center gap-2">
-                    AI Citizen Assistant
+                    {t('chatbot.title')}
                     <button 
                       onClick={toggleTts} 
                       className={`p-1.5 rounded-full transition-colors ${ttsEnabled ? 'bg-brand-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
-                      title={ttsEnabled ? "Text-to-Speech ON" : "Text-to-Speech OFF"}
+                      title={ttsEnabled ? t('chatbot.ttsOn') : t('chatbot.ttsOff')}
                     >
                       {ttsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                     </button>
                   </h3>
                   <p className="text-xs text-brand-300 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Online
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> {t('chatbot.online')}
                   </p>
                 </div>
               </div>
@@ -292,7 +300,7 @@ const Chatbot = () => {
 
             {/* Quick Replies */}
             <div className="px-4 py-2 bg-slate-50 overflow-x-auto whitespace-nowrap flex gap-2 no-scrollbar border-t border-slate-100 shrink-0">
-              {['Open Dashboard', 'Track Complaints', 'Find Schemes'].map((qr, i) => (
+              {[t('chatbot.qrDashboard'), t('chatbot.qrTrack'), t('chatbot.qrSchemes')].map((qr, i) => (
                 <button key={i} onClick={() => { setInput(qr); handleSend(qr); }} className="inline-block px-4 py-1.5 bg-white border border-slate-200 text-xs font-medium text-slate-600 rounded-full hover:border-brand-400 hover:text-brand-600 transition-colors">
                   {qr}
                 </button>
@@ -305,7 +313,7 @@ const Chatbot = () => {
                 <button 
                   type="button"
                   onClick={toggleListening}
-                  title="Voice Input"
+                  title={t('chatbot.voiceInput')}
                   className={`p-3 rounded-xl transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 >
                   {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
@@ -315,7 +323,7 @@ const Chatbot = () => {
                     type="text" 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={isListening ? "Listening..." : "Ask anything..."} 
+                    placeholder={isListening ? t('chatbot.listening') : t('chatbot.placeholder')} 
                     className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none text-sm bg-slate-50"
                   />
                   <button type="submit" disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-brand-600 hover:bg-brand-50 rounded-lg disabled:opacity-50 transition-colors">
