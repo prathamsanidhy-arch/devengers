@@ -119,6 +119,8 @@ const NearbyOffices = () => {
   const [offices, setOffices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [locationName, setLocationName] = useState('Using Live Location');
+  const [locationNameLoading, setLocationNameLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -295,6 +297,75 @@ const NearbyOffices = () => {
     loadPlaces();
   }, [userLocation]);
 
+  useEffect(() => {
+    if (!userLocation || locationStatus !== 'granted') return;
+    
+    const fetchLocationName = async () => {
+      const cacheKey = 'cached_location_name';
+      const CACHE_TIME = 30 * 60 * 1000; // 30 minutes
+      const cache = localStorage.getItem(cacheKey);
+      
+      if (cache) {
+        try {
+          const parsed = JSON.parse(cache);
+          if (
+            Date.now() - parsed.timestamp < CACHE_TIME &&
+            Math.abs(parsed.lat - userLocation.lat) < 0.001 &&
+            Math.abs(parsed.lng - userLocation.lng) < 0.001
+          ) {
+            setLocationName(parsed.name);
+            setLocationNameLoading(false);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      try {
+        const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLocation.lat}&lon=${userLocation.lng}`, {
+          headers: { 'User-Agent': 'SmartBharatApp/1.0' }
+        }, 8000);
+        
+        if (!res.ok) throw new Error('Geocoding failed');
+        const data = await res.json();
+        
+        const address = data.address;
+        const getReadableLocation = (addr) => {
+          if (!addr) return null;
+          const poi = addr.university || addr.college || addr.amenity || addr.hospital || addr.mall || addr.commercial || addr.building || addr.landmark;
+          const area = addr.neighbourhood || addr.suburb || addr.residential;
+          const city = addr.city || addr.town || addr.village || addr.locality || addr.county;
+          
+          if (poi && city) return `${poi}, ${city}`;
+          if (poi) return poi;
+          if (area && city) return `${area}, ${city}`;
+          if (area) return area;
+          if (city) return city;
+          return null;
+        };
+        
+        const readable = getReadableLocation(address);
+        if (readable) {
+          setLocationName(readable);
+          localStorage.setItem(cacheKey, JSON.stringify({
+            name: readable,
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            timestamp: Date.now()
+          }));
+        } else {
+          setLocationName('Using Live Location');
+        }
+      } catch (err) {
+        console.error('Reverse geocoding error:', err);
+        setLocationName('Using Live Location');
+      } finally {
+        setLocationNameLoading(false);
+      }
+    };
+
+    fetchLocationName();
+  }, [userLocation, locationStatus]);
+
   const processedOffices = useMemo(() => {
     let list = offices.map(o => {
       const dist = userLocation ? getDistance(userLocation.lat, userLocation.lng, o.lat, o.lng) : null;
@@ -342,7 +413,9 @@ const NearbyOffices = () => {
         
         {locationStatus === 'granted' && (
           <div className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold mb-6">
-            📍 Using Live Location
+            📍 <motion.span key={locationName} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+              {locationNameLoading ? 'Using Live Location' : locationName}
+            </motion.span>
           </div>
         )}
         {locationStatus === 'denied' && (
