@@ -309,45 +309,68 @@ const NearbyOffices = () => {
 
       try {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const res = await fetchWithTimeout(`${API_URL}/api/places/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}`, {}, 8000);
-        
-        if (!res.ok) throw new Error('Geocoding failed');
-        const data = await res.json();
-        
-        console.log("Geoapify Reverse Geocoding Full JSON Response:", data);
         
         let readable = null;
-        
-        if (data.features && data.features.length > 0) {
-          const props = data.features[0].properties || {};
-          
-          console.log("Extracted Fields:");
-          const fieldsToLog = [
-            'formatted', 'name', 'street', 'suburb', 'district', 
-            'neighbourhood', 'hamlet', 'village', 'city', 'county', 
-            'state', 'place_id', 'datasource'
-          ];
-          
-          fieldsToLog.forEach(field => {
-            if (props[field]) {
-              console.log(`${field}:`, props[field]);
-            }
-          });
+        let isLandmarkFound = false;
 
-          // Check if name exists and contains landmark keywords
-          const nameLower = (props.name || '').toLowerCase();
-          const isLandmark = ['university', 'college', 'hospital', 'mall', 'metro', 'station', 'office', 'school', 'institute', 'plaza'].some(kw => nameLower.includes(kw));
-          
-          if (props.name && isLandmark) {
-            readable = props.city ? `${props.name}, ${props.city}` : props.name;
-          } else if (props.name) {
-            // Even if it doesn't strictly match the keyword list, a specific 'name' in Geoapify is usually a POI
-            readable = props.city ? `${props.name}, ${props.city}` : props.name;
-          } else {
-            console.log("No specific landmark (name) was returned by Geoapify for these coordinates. Falling back to city/locality.");
-            readable = props.neighbourhood || props.suburb || props.village || props.city || props.county || 'Using Live Location';
-            if (readable !== props.city && props.city) {
-              readable = `${readable}, ${props.city}`;
+        // 1. Nearby Landmark Search (300m radius)
+        try {
+          const landmarkRes = await fetchWithTimeout(`${API_URL}/api/places/landmarks?lat=${userLocation.lat}&lon=${userLocation.lng}&radius=300`, {}, 8000);
+          if (landmarkRes.ok) {
+             const landmarkData = await landmarkRes.json();
+             
+             if (landmarkData.features && landmarkData.features.length > 0) {
+               const priority = {
+                 'education.university': 1,
+                 'education.college': 2,
+                 'education.school': 3,
+                 'public_transport.subway': 4,
+                 'public_transport.train': 5,
+                 'healthcare.hospital': 6,
+                 'commercial.shopping_mall': 7,
+                 'office.government': 8
+               };
+               
+               let bestLandmark = null;
+               let bestScore = 999;
+               
+               for (const feature of landmarkData.features) {
+                 if (!feature.properties.name) continue;
+                 const cats = feature.properties.categories || [];
+                 
+                 let score = 999;
+                 cats.forEach(c => {
+                   if (priority[c] && priority[c] < score) {
+                     score = priority[c];
+                   }
+                 });
+                 
+                 if (score < bestScore) {
+                   bestScore = score;
+                   bestLandmark = feature.properties.name;
+                 }
+               }
+               
+               if (bestLandmark) {
+                 readable = bestLandmark;
+                 isLandmarkFound = true;
+                 console.log("Landmark found:", bestLandmark);
+               }
+             }
+          }
+        } catch (e) {
+          console.error("Landmark search failed, falling back to reverse geocoding", e);
+        }
+
+        // 2. Fallback to Reverse Geocoding City if no landmark
+        if (!isLandmarkFound) {
+          console.log("No high-priority landmark found within 300m. Falling back to reverse geocoding.");
+          const res = await fetchWithTimeout(`${API_URL}/api/places/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}`, {}, 8000);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.features && data.features.length > 0) {
+              const props = data.features[0].properties || {};
+              readable = props.city || props.town || props.village || props.county || props.state || 'Using Live Location';
             }
           }
         }
