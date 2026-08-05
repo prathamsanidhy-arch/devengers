@@ -328,22 +328,54 @@ const NearbyOffices = () => {
         if (!res.ok) throw new Error('Geocoding failed');
         const data = await res.json();
         
+        console.log("Nominatim Raw JSON:", data);
+        
         const address = data.address;
-        const getReadableLocation = (addr) => {
+        const getReadableLocation = (addr, displayName) => {
           if (!addr) return null;
-          const poi = addr.university || addr.college || addr.amenity || addr.hospital || addr.mall || addr.commercial || addr.building || addr.landmark;
-          const area = addr.neighbourhood || addr.suburb || addr.residential;
-          const city = addr.city || addr.town || addr.village || addr.locality || addr.county;
           
-          if (poi && city) return `${poi}, ${city}`;
-          if (poi) return poi;
-          if (area && city) return `${area}, ${city}`;
-          if (area) return area;
-          if (city) return city;
+          const getValue = (...keys) => {
+            for (const key of keys) {
+              if (addr[key] && addr[key].toLowerCase() !== 'yes' && addr[key].toLowerCase() !== 'unnamed') {
+                return addr[key];
+              }
+            }
+            return null;
+          };
+
+          const specificPoi = getValue(
+            'university', 'college', 'school', 'hospital', 'railway', 'station', 
+            'aerodrome', 'airport', 'mall', 'shop', 'office', 'building', 'amenity', 
+            'tourism', 'leisure', 'landmark', 'name'
+          );
+
+          const localArea = getValue(
+            'neighbourhood', 'residential', 'suburb', 'quarter', 'city_district', 'road'
+          );
+
+          const cityArea = getValue(
+            'hamlet', 'village', 'locality', 'town', 'city', 'municipality', 'county'
+          );
+
+          if (specificPoi && cityArea && specificPoi !== cityArea) {
+             if (cityArea.includes(specificPoi) || specificPoi.includes(cityArea)) return specificPoi;
+             return `${specificPoi}, ${cityArea}`;
+          }
+          if (specificPoi) return specificPoi;
+          
+          if (localArea && cityArea && localArea !== cityArea) {
+             if (cityArea.includes(localArea) || localArea.includes(cityArea)) return localArea;
+             return `${localArea}, ${cityArea}`;
+          }
+          if (localArea) return localArea;
+          
+          if (cityArea) return cityArea;
+          
+          if (displayName) return displayName.split(',')[0].trim();
           return null;
         };
         
-        const readable = getReadableLocation(address);
+        const readable = getReadableLocation(address, data.display_name);
         if (readable) {
           setLocationName(readable);
           localStorage.setItem(cacheKey, JSON.stringify({
