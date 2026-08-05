@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Clock, Phone, Building2, Search, UploadCloud, Map } from 'lucide-react';
+import { MapPin, Navigation, Clock, Phone, Building2, Search, UploadCloud, Map, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -71,6 +71,45 @@ const mapOSMToCategory = (tags) => {
   return { category: 'Revenue', type: 'Administration', department: 'Government', color: 'bg-slate-100 text-slate-600 border-slate-200' };
 };
 
+const CACHE_KEY = 'cached_offices';
+const LOCATION_CACHE_KEY = 'cached_location';
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+const fetchWithTimeout = async (url, options, timeout = 10000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+};
+
+const SkeletonCard = () => (
+  <div className="glass-card p-6 flex flex-col h-full animate-pulse border border-slate-100">
+    <div className="flex justify-between items-start mb-4 mt-2">
+      <div className="h-6 w-24 bg-slate-200 rounded-full"></div>
+      <div className="h-6 w-16 bg-slate-200 rounded-lg"></div>
+    </div>
+    <div className="h-6 w-3/4 bg-slate-200 rounded mb-4 mt-2"></div>
+    <div className="space-y-3 mb-6 flex-1 pl-7">
+      <div className="h-4 w-full bg-slate-200 rounded"></div>
+      <div className="h-4 w-5/6 bg-slate-200 rounded"></div>
+      <div className="h-4 w-1/2 bg-slate-200 rounded"></div>
+    </div>
+    <div className="flex flex-col gap-3 mt-auto">
+      <div className="flex gap-3">
+        <div className="flex-1 h-10 bg-slate-200 rounded-xl"></div>
+        <div className="flex-1 h-10 bg-slate-200 rounded-xl"></div>
+      </div>
+      <div className="w-full h-10 bg-slate-200 rounded-xl"></div>
+    </div>
+  </div>
+);
+
 const NearbyOffices = () => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,51 +118,114 @@ const NearbyOffices = () => {
   const [locationStatus, setLocationStatus] = useState('pending'); // pending, granted, denied
   const [offices, setOffices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let initialLocation = null;
+    const cachedLoc = localStorage.getItem(LOCATION_CACHE_KEY);
+    if (cachedLoc) {
+      try {
+        const parsed = JSON.parse(cachedLoc);
+        if (parsed.lat && parsed.lng) {
+          initialLocation = parsed;
+          setUserLocation(parsed);
+          setLocationStatus('granted');
+        }
+      } catch (e) {}
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
+          const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(loc);
           setLocationStatus('granted');
+          localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(loc));
         },
-        (error) => {
-          console.error("Location error:", error);
-          setUserLocation({ lat: 28.6139, lng: 77.2090 });
-          setLocationStatus('denied');
-        }
+        (err) => {
+          console.error("Location error:", err);
+          if (!initialLocation) {
+            setUserLocation({ lat: 28.6139, lng: 77.2090 });
+            setLocationStatus('denied');
+          }
+        },
+        { timeout: 10000 }
       );
     } else {
-      setUserLocation({ lat: 28.6139, lng: 77.2090 });
-      setLocationStatus('denied');
+      if (!initialLocation) {
+        setUserLocation({ lat: 28.6139, lng: 77.2090 });
+        setLocationStatus('denied');
+      }
     }
   }, []);
 
   useEffect(() => {
-    const fetchPlaces = async () => {
+    const loadPlaces = async () => {
       if (!userLocation) return;
+      
+      const cache = localStorage.getItem(CACHE_KEY);
+      let validCache = null;
+      let staleCache = null;
+
+      if (cache) {
+        try {
+          const parsed = JSON.parse(cache);
+          if (parsed.offices && parsed.offices.length > 0) {
+            staleCache = parsed.offices;
+            // Valid if within CACHE_DURATION and location hasn't drifted more than e.g. a tiny fraction (or exact match)
+            if (Date.now() - parsed.timestamp < CACHE_DURATION && 
+                Math.abs(parsed.lat - userLocation.lat) < 0.001 && 
+                Math.abs(parsed.lng - userLocation.lng) < 0.001) {
+              validCache = parsed.offices;
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (validCache) {
+        setOffices(validCache);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+
       setIsLoading(true);
+      setError(null);
+
+      const fetchWithRetry = async (retries = 1) => {
+        try {
+          const query = `
+            [out:json][timeout:25];
+            (
+              node["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
+              node["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
+              way["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
+              way["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
+            );
+            out center;
+          `;
+          
+          const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "data=" + encodeURIComponent(query)
+          }, 10000);
+
+          if (!res.ok) throw new Error('Network response was not ok');
+          return await res.json();
+        } catch (error) {
+          if (retries > 0) {
+            console.warn("Fetch failed, retrying in 2 seconds...", error);
+            await new Promise(r => setTimeout(r, 2000));
+            return fetchWithRetry(retries - 1);
+          }
+          throw error;
+        }
+      };
+
       try {
-        const query = `
-          [out:json][timeout:25];
-          (
-            node["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
-            node["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
-            way["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
-            way["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
-          );
-          out center;
-        `;
-        const res = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(query)
-        });
-        const data = await res.json();
+        const data = await fetchWithRetry(1);
         
         let fetchedOffices = [];
         if (data && data.elements) {
@@ -172,14 +274,25 @@ const NearbyOffices = () => {
         });
         
         setOffices(uniqueOffices);
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          timestamp: Date.now(),
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+          offices: uniqueOffices
+        }));
       } catch (err) {
         console.error("Error fetching places:", err);
+        if (staleCache) {
+          setOffices(staleCache);
+        } else {
+          setError(t("NearbyOffices.unable_to_load_nearby", "Unable to load nearby places. Please try again later."));
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPlaces();
+    loadPlaces();
   }, [userLocation]);
 
   const processedOffices = useMemo(() => {
@@ -261,8 +374,16 @@ const NearbyOffices = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array(6).fill().map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 px-4 glass-card border-red-200 max-w-md mx-auto">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">{error}</h3>
+          <button onClick={() => window.location.reload()} className="mt-4 inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2.5 rounded-xl font-semibold transition-colors">
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
