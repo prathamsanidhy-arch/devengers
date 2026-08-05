@@ -308,61 +308,49 @@ const NearbyOffices = () => {
       }
 
       try {
-        const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLocation.lat}&lon=${userLocation.lng}`, {
-          headers: { 'User-Agent': 'SmartBharatApp/1.0' }
-        }, 8000);
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetchWithTimeout(`${API_URL}/api/places/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}`, {}, 8000);
         
         if (!res.ok) throw new Error('Geocoding failed');
         const data = await res.json();
         
-        console.log("Nominatim Raw JSON:", data);
+        console.log("Geoapify Reverse Geocoding Full JSON Response:", data);
         
-        const address = data.address;
-        const getReadableLocation = (addr, displayName) => {
-          if (!addr) return null;
+        let readable = null;
+        
+        if (data.features && data.features.length > 0) {
+          const props = data.features[0].properties || {};
           
-          const getValue = (...keys) => {
-            for (const key of keys) {
-              if (addr[key] && addr[key].toLowerCase() !== 'yes' && addr[key].toLowerCase() !== 'unnamed') {
-                return addr[key];
-              }
+          console.log("Extracted Fields:");
+          const fieldsToLog = [
+            'formatted', 'name', 'street', 'suburb', 'district', 
+            'neighbourhood', 'hamlet', 'village', 'city', 'county', 
+            'state', 'place_id', 'datasource'
+          ];
+          
+          fieldsToLog.forEach(field => {
+            if (props[field]) {
+              console.log(`${field}:`, props[field]);
             }
-            return null;
-          };
+          });
 
-          const specificPoi = getValue(
-            'university', 'college', 'school', 'hospital', 'railway', 'station', 
-            'aerodrome', 'airport', 'mall', 'shop', 'office', 'building', 'amenity', 
-            'tourism', 'leisure', 'landmark', 'name'
-          );
-
-          const localArea = getValue(
-            'neighbourhood', 'residential', 'suburb', 'quarter', 'city_district', 'road'
-          );
-
-          const cityArea = getValue(
-            'hamlet', 'village', 'locality', 'town', 'city', 'municipality', 'county'
-          );
-
-          if (specificPoi && cityArea && specificPoi !== cityArea) {
-             if (cityArea.includes(specificPoi) || specificPoi.includes(cityArea)) return specificPoi;
-             return `${specificPoi}, ${cityArea}`;
+          // Check if name exists and contains landmark keywords
+          const nameLower = (props.name || '').toLowerCase();
+          const isLandmark = ['university', 'college', 'hospital', 'mall', 'metro', 'station', 'office', 'school', 'institute', 'plaza'].some(kw => nameLower.includes(kw));
+          
+          if (props.name && isLandmark) {
+            readable = props.city ? `${props.name}, ${props.city}` : props.name;
+          } else if (props.name) {
+            // Even if it doesn't strictly match the keyword list, a specific 'name' in Geoapify is usually a POI
+            readable = props.city ? `${props.name}, ${props.city}` : props.name;
+          } else {
+            console.log("No specific landmark (name) was returned by Geoapify for these coordinates. Falling back to city/locality.");
+            readable = props.neighbourhood || props.suburb || props.village || props.city || props.county || 'Using Live Location';
+            if (readable !== props.city && props.city) {
+              readable = `${readable}, ${props.city}`;
+            }
           }
-          if (specificPoi) return specificPoi;
-          
-          if (localArea && cityArea && localArea !== cityArea) {
-             if (cityArea.includes(localArea) || localArea.includes(cityArea)) return localArea;
-             return `${localArea}, ${cityArea}`;
-          }
-          if (localArea) return localArea;
-          
-          if (cityArea) return cityArea;
-          
-          if (displayName) return displayName.split(',')[0].trim();
-          return null;
-        };
-        
-        const readable = getReadableLocation(address, data.display_name);
+        }
         if (readable) {
           setLocationName(readable);
           localStorage.setItem(cacheKey, JSON.stringify({
