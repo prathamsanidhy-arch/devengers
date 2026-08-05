@@ -27,6 +27,7 @@ app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/schemes', require('./routes/schemeRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
 app.use('/api/folders', require('./routes/folderRoutes'));
+app.use('/api/places', require('./routes/placeRoutes'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Smart Bharat API is running' });

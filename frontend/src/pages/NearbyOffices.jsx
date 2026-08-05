@@ -43,13 +43,14 @@ function checkIsOpen(timeStr) {
 
 const CATEGORIES = ['All', 'Identity', 'Transport', 'Healthcare', 'Police', 'Municipal', 'Revenue', 'Utilities', 'Emergency'];
 
-const mapOSMToCategory = (tags) => {
-  const name = (tags.name || tags['name:en'] || '').toLowerCase();
+const mapGeoapifyToCategory = (properties) => {
+  const name = (properties.name || '').toLowerCase();
+  const categories = properties.categories || [];
   
-  if (tags.amenity === 'police' || name.includes('police')) {
+  if (categories.includes('service.police') || name.includes('police')) {
     return { category: 'Police', type: 'Law Enforcement', department: 'Home Affairs', color: 'bg-blue-100 text-blue-600 border-blue-200' };
   }
-  if (tags.amenity === 'hospital' || name.includes('hospital')) {
+  if (categories.includes('healthcare.hospital') || name.includes('hospital')) {
     return { category: 'Healthcare', type: 'Healthcare', department: 'Health Department', color: 'bg-red-100 text-red-600 border-red-200' };
   }
   if (name.includes('rto') || name.includes('transport')) {
@@ -58,13 +59,13 @@ const mapOSMToCategory = (tags) => {
   if (name.includes('passport') || name.includes('aadhaar') || name.includes('uidai')) {
     return { category: 'Identity', type: 'Identity', department: 'Identity & Docs', color: 'bg-purple-100 text-purple-600 border-purple-200' };
   }
-  if (tags.amenity === 'townhall' || name.includes('municipal') || name.includes('nagar nigam')) {
+  if (name.includes('municipal') || name.includes('nagar nigam') || categories.includes('building.office')) {
     return { category: 'Municipal', type: 'Civic Administration', department: 'Civic Administration', color: 'bg-emerald-100 text-emerald-600 border-emerald-200' };
   }
-  if (tags.office === 'utility' || tags.office === 'energy' || name.includes('water') || name.includes('electricity') || name.includes('power')) {
+  if (name.includes('water') || name.includes('electricity') || name.includes('power')) {
     return { category: 'Utilities', type: 'Utilities', department: 'Public Utilities', color: 'bg-cyan-100 text-cyan-600 border-cyan-200' };
   }
-  if (tags.amenity === 'courthouse' || name.includes('revenue') || name.includes('tehsil') || name.includes('collector')) {
+  if (name.includes('revenue') || name.includes('tehsil') || name.includes('collector') || categories.includes('office.government')) {
     return { category: 'Revenue', type: 'Administration', department: 'Revenue Department', color: 'bg-indigo-100 text-indigo-600 border-indigo-200' };
   }
   
@@ -197,22 +198,8 @@ const NearbyOffices = () => {
 
       const fetchWithRetry = async (retries = 1) => {
         try {
-          const query = `
-            [out:json][timeout:25];
-            (
-              node["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
-              node["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
-              way["amenity"~"police|hospital|townhall|courthouse"](around:15000,${userLocation.lat},${userLocation.lng});
-              way["office"~"government|administrative|utility|energy"](around:15000,${userLocation.lat},${userLocation.lng});
-            );
-            out center;
-          `;
-          
-          const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "data=" + encodeURIComponent(query)
-          }, 10000);
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await fetchWithTimeout(`${API_URL}/api/places/nearby?lat=${userLocation.lat}&lon=${userLocation.lng}&radius=15000`, {}, 10000);
 
           if (!res.ok) throw new Error('Network response was not ok');
           return await res.json();
@@ -230,25 +217,25 @@ const NearbyOffices = () => {
         const data = await fetchWithRetry(1);
         
         let fetchedOffices = [];
-        if (data && data.elements) {
-          data.elements.forEach(el => {
-            const tags = el.tags || {};
-            const name = tags.name || tags['name:en'];
+        if (data && data.features) {
+          data.features.forEach(feature => {
+            const properties = feature.properties || {};
+            const name = properties.name;
             if (!name) return;
 
-            const placeLat = el.lat || (el.center && el.center.lat);
-            const placeLon = el.lon || (el.center && el.center.lon);
+            const placeLat = properties.lat;
+            const placeLon = properties.lon;
             if (!placeLat || !placeLon) return;
 
-            const { category, type, department, color } = mapOSMToCategory(tags);
+            const { category, type, department, color } = mapGeoapifyToCategory(properties);
             
-            let addressParts = [];
-            if (tags['addr:street']) addressParts.push(tags['addr:street']);
-            if (tags['addr:city']) addressParts.push(tags['addr:city']);
-            const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : (tags['addr:full'] || 'Address unavailable');
+            const fullAddress = properties.formatted || properties.address_line2 || properties.street || 'Address unavailable';
+            
+            let phone = properties.contact?.phone || properties.phone || 'N/A';
+            if (Array.isArray(phone)) phone = phone[0];
             
             fetchedOffices.push({
-              id: el.id,
+              id: properties.place_id || Math.random().toString(),
               name,
               address: fullAddress,
               lat: placeLat,
@@ -256,11 +243,11 @@ const NearbyOffices = () => {
               category,
               type,
               department,
-              phone: tags.phone || tags['contact:phone'] || 'N/A',
-              time: tags.opening_hours || 'N/A',
+              phone: phone,
+              time: properties.opening_hours || 'N/A',
               color,
-              city: tags['addr:city'] || '',
-              rating: tags.rating || null
+              city: properties.city || properties.state || '',
+              rating: null // Geoapify free tier doesn't generally provide standard ratings
             });
           });
         }
