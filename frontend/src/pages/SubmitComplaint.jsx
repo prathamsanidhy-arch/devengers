@@ -167,7 +167,7 @@ const SubmitComplaint = () => {
   return <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">{t("SubmitComplaint.report_an_issue")}</h1>
-        <p className="text-slate-500 mt-2">Help us keep Smart Bharat clean and safe. Upload a photo and let our AI handle the rest.</p>
+        <p className="text-slate-500 mt-2">Help us keep JanSetu clean and safe. Upload a photo and let our AI handle the rest.</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-8">

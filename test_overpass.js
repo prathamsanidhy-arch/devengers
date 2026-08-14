@@ -7,7 +7,7 @@ fetch('https://overpass-api.de/api/interpreter', {
   headers: {
     "Content-Type": "application/x-www-form-urlencoded",
     "Accept": "application/json",
-    "User-Agent": "SmartBharatApp/1.0"
+    "User-Agent": "JanSetuApp/1.0"
   }
 }).then(res => res.json()).then(data => {
   console.log("Got " + data.elements.length + " elements");

@@ -1,7 +1,7 @@
 {
   "name": "devengers-prompt-wars",
   "version": "1.0.0",
-  "description": "Smart Bharat fullstack app",
+  "description": "JanSetu fullstack app",
   "scripts": {
     "start": "node backend/server.js",
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend"

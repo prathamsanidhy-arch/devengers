@@ -30,7 +30,7 @@ app.use('/api/folders', require('./routes/folderRoutes'));
 app.use('/api/places', require('./routes/placeRoutes'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Smart Bharat API is running' });
+  res.json({ status: 'ok', message: 'JanSetu API is running' });
 });
 
 // Serve frontend in production

@@ -9,13 +9,9 @@ const Landing = () => {
       {/* Navbar */}
       <nav className="glass sticky top-0 z-50 px-4 sm:px-6 lg:px-8 border-b border-slate-200">
         <div className="max-w-7xl mx-auto flex justify-between h-20 items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-lg shadow-brand-500/30">
-              <Landmark className="text-white w-6 h-6" />
-            </div>
-            <span className="font-heading font-bold text-2xl tracking-tight text-gov-900">
-              Smart<span className="text-brand-600">Bharat</span>
-            </span>
+          <div className="flex items-center">
+            <img src="/logos/jansetu-icon.png" alt="JanSetu" className="h-10 w-auto md:hidden" />
+            <img src="/logos/jansetu-logo.png" alt="JanSetu" className="h-10 w-auto hidden md:block" />
           </div>
           <div className="hidden md:flex space-x-8 font-medium text-slate-600">
             <a href="#features" className="hover:text-brand-600 transition-colors">Features</a>
@@ -70,7 +66,7 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gov-900 mb-4">Everything you need in one place</h2>
-            <p className="text-slate-500 max-w-2xl mx-auto">Smart Bharat eliminates bureaucracy through AI automation and unified digital interfaces.</p>
+            <p className="text-slate-500 max-w-2xl mx-auto">JanSetu eliminates bureaucracy through AI automation and unified digital interfaces.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -117,8 +113,8 @@ const Landing = () => {
       {/* Footer */}
       <footer className="bg-slate-50 border-t border-slate-200 py-12 text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Landmark className="text-brand-600 w-6 h-6" />
-          <span className="font-bold text-xl text-gov-900">SmartBharat</span>
+          <img src="/logos/jansetu-icon.png" alt="JanSetu" className="h-6 w-auto" />
+          <span className="font-bold text-xl text-gov-900">JanSetu</span>
         </div>
         <p className="text-slate-500 text-sm">© 2026 Government of India Digital Initiative. Built with Google Gemini.</p>
       </footer>

@@ -38,9 +38,7 @@ const Login = () => {
         
         <div className="relative z-10 max-w-xl">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center mb-8 shadow-2xl shadow-brand-500/30">
-              <Landmark className="text-white w-8 h-8" />
-            </div>
+            <img src="/logos/jansetu-icon.png" alt="JanSetu" className="h-16 w-auto mb-8 brightness-0 invert" />
             <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
               Empowering Citizens with <span className="text-brand-500">Smart AI</span>
             </h1>
@@ -85,10 +83,8 @@ const Login = () => {
           className="w-full max-w-md relative z-10 glass-card p-8 sm:p-10"
         >
           <div className="text-center mb-10 lg:hidden">
-             <div className="w-12 h-12 rounded-xl bg-gradient-brand flex items-center justify-center mx-auto mb-4">
-              <Landmark className="text-white w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900">Smart Bharat</h2>
+             <img src="/logos/jansetu-icon.png" alt="JanSetu" className="h-12 w-auto mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-900">JanSetu</h2>
           </div>
 
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>

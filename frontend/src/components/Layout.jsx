@@ -70,13 +70,9 @@ const Layout = ({ children }) => {
       <nav className="glass sticky top-0 z-50 px-4 sm:px-6 lg:px-8 border-b border-slate-200">
         <div className="flex justify-between h-16 max-w-7xl mx-auto">
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center">
-                <Landmark className="text-white w-5 h-5" />
-              </div>
-              <span className="font-heading font-bold text-xl tracking-tight text-gov-900">
-                Smart<span className="text-brand-600">Bharat</span>
-              </span>
+            <Link to="/dashboard" className="flex items-center">
+              <img src="/logos/jansetu-icon.png" alt="JanSetu" className="h-8 w-auto md:hidden" />
+              <img src="/logos/jansetu-logo.png" alt="JanSetu" className="h-8 w-auto hidden md:block" />
             </Link>
           </div>
           

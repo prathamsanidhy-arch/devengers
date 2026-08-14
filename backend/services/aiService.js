@@ -17,7 +17,7 @@ const analyzeComplaintImage = async (base64Image, mimeType) => {
   const model = genAI.getGenerativeModel({ model: modelName });
 
   const prompt = `
-  You are an expert civic AI assistant for Smart Bharat.
+  You are an expert civic AI assistant for JanSetu.
   Analyze the following image of a civic issue (e.g., pothole, garbage, broken pipe, power outage).
   Generate a JSON response containing the following fields:
   - title: A short, clear title for the complaint.
@@ -366,7 +366,7 @@ const discoverSchemes = async (profileData) => {
     });
 
     const prompt = `
-    You are an expert Indian Government Scheme Advisor for Smart Bharat.
+    You are an expert Indian Government Scheme Advisor for JanSetu.
     Given the following citizen profile, recommend 3 to 5 highly relevant government schemes (Central or State level).
     
     Citizen Profile:
@@ -410,7 +410,7 @@ const explainService = async (serviceName) => {
     });
 
     const prompt = `
-    You are an expert citizen assistant for Smart Bharat.
+    You are an expert citizen assistant for JanSetu.
     Explain the government service: "${serviceName}".
     Return a JSON object with this exact structure:
     {
@@ -480,7 +480,7 @@ const analyzeVaultDocument = async (filePath, mimeType, originalName) => {
     const fileData = fs.readFileSync(filePath).toString("base64");
     
     const prompt = `
-    You are an expert document analyzer for Smart Bharat DigiVault.
+    You are an expert document analyzer for JanSetu DigiVault.
     Analyze this uploaded document.
     Automatically detect if it is one of: Aadhaar, PAN, Passport, Driving License, Income Certificate, Electricity Bill, Water Bill, Marksheet, Birth Certificate, Insurance, Property Papers, or Other.
     Return a JSON object with this exact structure:
@@ -521,7 +521,7 @@ const chatAssistant = async (message, history) => {
 
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const systemInstruction = `You are the AI Citizen Assistant for the Smart Bharat app.
+    const systemInstruction = `You are the AI Citizen Assistant for the JanSetu app.
 You assist citizens with government services, schemes, and complaints.
 You can perform actions by including a special command in your response. 
 To navigate to a page, use the exact format: [NAVIGATE: /path]
